@@ -68,13 +68,13 @@ class BatchGenerator(object):
             (self._cursor + 1) % self._max_cursor
         )
 
-    def batches(self, batch_size, count):
+    def batches(self, batch_size):
         """
             generates batches of cbow batch_size
             from text passed as a list of base64-decoded
             ngrams
         """
-        for _ in range(count):
+        while True:
             batch = np.ndarray((batch_size, 2 * self._window_size),
                                dtype=np.int32)
             labels = np.ndarray((batch_size, 1), dtype=np.int32)
@@ -86,13 +86,14 @@ class BatchGenerator(object):
 
 
 class NGRAMVectorizer(object):
-    def __init__(self, N=2, dim=64, batch_size=64, window_size=1, sampled=0.1):
+    def __init__(self, N=2, dim=64, batch_size=64, window_size=1, sampled=0.1, tol=0.001):
         self._N = N
         self._dim = dim
         self._text = None
         self._batch_size = batch_size
         self._window_size = window_size
         self._sampled = sampled
+        self._tol = tol
 
         self._embeddings = np.random.uniform(-1.0, 1.0,
                                              [self.vocabulary_size, self._dim])
@@ -123,7 +124,7 @@ class NGRAMVectorizer(object):
     def _list2text(self, list):
         return "".join(map(self._int2ngram, list))
 
-    def fit(self, text, n_steps=2001):
+    def fit(self, text):
         data = self._text2list(text)
 
         graph = tf.Graph()
@@ -165,9 +166,9 @@ class NGRAMVectorizer(object):
 
         with tf.Session(graph=graph) as session:
             tf.global_variables_initializer().run()
-            average_loss = 0
-            step = 0
-            for X, labels in batch_gen.batches(self._batch_size, n_steps):
+            average_loss, prev_loss, stop_counter = 0, -1, 0
+            step = 1
+            for X, labels in batch_gen.batches(self._batch_size):
                 feed_dict = {train_input: X, train_labels: labels}
                 _, loss_val = session.run(
                     [optimizer, loss],
@@ -175,10 +176,19 @@ class NGRAMVectorizer(object):
 
                 average_loss += loss_val
 
-                if step % 500 == 0:
+                if step % 1000 == 0:
+                    average_loss = average_loss / 1000
                     print("Average loss %f at step %d"
-                          % (average_loss / 500, step))
-                    average_loss = 0
+                          % (average_loss, step))
+
+                    if prev_loss - average_loss < self._tol:
+                        stop_counter += 1
+                        if stop_counter > 10:
+                            break
+                    else:
+                        stop_counter = 0
+
+                    average_loss, prev_loss = 0, average_loss
 
                 step += 1
 
