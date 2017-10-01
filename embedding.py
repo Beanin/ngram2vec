@@ -86,7 +86,10 @@ class BatchGenerator(object):
 
 
 class NGRAMVectorizer(object):
-    def __init__(self, N=2, dim=64, batch_size=64, window_size=1, sampled=0.1, tol=0.001):
+    def __init__(self, N=2, dim=64, batch_size=64, window_size=1,
+                 sampled=0.1, tol=0.001):
+        """ Initialize new NGRAMVectorizer instance and all its parameters
+        """
         self._N = N
         self._dim = dim
         self._text = None
@@ -125,6 +128,15 @@ class NGRAMVectorizer(object):
         return "".join(map(self._int2ngram, list))
 
     def fit(self, text):
+        """ Given the text, train embeddings using CBOW method
+
+        parameters:
+        text - text to train
+        type: string
+
+        returns:
+            None
+        """
         data = self._text2list(text)
 
         graph = tf.Graph()
