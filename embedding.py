@@ -205,3 +205,16 @@ class NGRAMVectorizer(object):
                 step += 1
 
             self._embeddings = normalized_embeddings.eval()
+
+    def transform(self, text):
+        """ Transform text into sequence of vectors
+            based on ngrams
+
+            parameters:
+            text  - text to extract ngrams
+            type: string
+
+            returns:
+                np.ndarray containing sequence of ngrams
+        """
+        return self._embeddings[(self._text2list(text), )]
