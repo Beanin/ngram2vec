@@ -89,7 +89,29 @@ class NGRAMVectorizer(object):
     def __init__(self, N=2, dim=64, batch_size=64, window_size=1,
                  sampled=0.1, tol=0.001):
         """ Initialize new NGRAMVectorizer instance and all its parameters
+            params:
+                N - ngram length
+                type: int
+
+                dim - embeddings size
+                type: int
+
+                batch_size - size of training batches
+                type: int
+
+                window_size - how many neighbour words should
+                              be considered in CBOW
+                type: int
+
+                sampled - relation of the number of samples
+                          to  the whole vocabulary size
+                type: float from (0, 1)
+
+                tol - threshold of the loss function
+                      change, when to stop SGD
+                type: float
         """
+
         self._N = N
         self._dim = dim
         self._text = None
