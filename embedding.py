@@ -14,6 +14,9 @@ from collections import Counter
 ALPHABET_LEN = len(string.ascii_lowercase)
 MAIN_TF_DEVICE = '/cpu:0'
 
+UNK = 0
+UNK_STR = "UNK"
+
 
 class Base26(object):
     """ Transformation between integers and
@@ -94,8 +97,6 @@ class NGRAMDictionary(object):
         - one-hot-encoding of words as a set of ngrams
     """
 
-    # TODO: Add processing of unknown words and ngrams
-
     def __init__(self, data, ngram_range=(2, 2), vocabulary_size=50000,
                  token_pattern="[A-Z\-\']{2,}(?![a-z])|[A-Z\-\']"
                  "[a-z\-\']+(?=[A-Z])|[\'\w\-]+",
@@ -133,7 +134,8 @@ class NGRAMDictionary(object):
         words = [token.lower() for token in self._tokenizer(data)]
 
         # save most common words
-        self._vocabulary = [w for w, _ in
+        self._vocabulary = [UNK_STR] + \
+                           [w for w, _ in
                             Counter(words).most_common(self._vocabulary_size)]
         self._reverse_vocabulary = {w: i for i, w in
                                     enumerate(self._vocabulary)}
@@ -144,12 +146,12 @@ class NGRAMDictionary(object):
             for i in range(len(data) - ngram_sz + 1):
                 ngrams.add(data[i: i + ngram_sz + 1])
 
-        self._ngrams = list(ngrams)
+        self._ngrams = [UNK_STR] + list(ngrams)
         self._reverse_ngrams = {w: i for i, w in
                                 enumerate(self._ngrams)}
 
     def enumerate_ngram(self, ngrams):
-        return [self._reverse_ngrams[t] for t in ngrams]
+        return [self._reverse_ngrams.get(t, UNK) for t in ngrams]
 
     def decode_ngram(self, indexes):
         return [self._ngrams[i] for i in indexes]
