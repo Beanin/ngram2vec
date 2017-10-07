@@ -7,7 +7,9 @@ import math
 import numpy as np
 import string
 import tensorflow as tf
+import re
 
+from collections import Counter
 
 ALPHABET_LEN = len(string.ascii_lowercase)
 MAIN_TF_DEVICE = '/cpu:0'
@@ -83,6 +85,86 @@ class BatchGenerator(object):
                 self._update_cursor()
 
             yield batch, labels
+
+
+class NGRAMDictionary(object):
+    """ Contain vocabulary of ngrams and words
+        and required mappings between them:
+        - enumerations
+        - one-hot-encoding of words as a set of ngrams
+    """
+
+    # TODO: Add processing of unknown words and ngrams
+
+    def __init__(self, data, ngram_range=(2, 2), vocabulary_size=50000,
+                 token_pattern="[A-Z\-\']{2,}(?![a-z])|[A-Z\-\']"
+                 "[a-z\-\']+(?=[A-Z])|[\'\w\-]+",
+                 tokenizer=None):
+        """ Initialize text and vocabularies with respect to parameters
+            params:
+                data - text to process
+                type: string
+
+                ngram_range - inclusive range of ngrams to consider
+                type: 2D-tuple
+
+                vocabulary_size - number of words to keep
+                type: int
+
+                tokenizer - function to transorm string into list of tokens
+                type: callable
+
+                token_pattern - regexp pattern to tokenize text on words
+                                regexp tokenization is used if tokenizer
+                                is not specified
+                type: string
+        """
+        self._ngram_range = ngram_range
+        self._vocabulary_size = vocabulary_size
+
+        # init tokenizer
+        if tokenizer is None:
+            p = re.compile(token_pattern)
+            self._tokenizer = lambda s: p.findall(s)
+        else:
+            self._tokenizer = tokenizer
+
+        # tokenize text
+        words = [token.lower() for token in self._tokenizer(data)]
+
+        # save most common words
+        self._vocabulary = [w for w, _ in
+                            Counter(words).most_common(self._vocabulary_size)]
+        self._reverse_vocabulary = {w: i for i, w in
+                                    enumerate(self._vocabulary)}
+
+        # extract ngrams
+        ngrams = set()
+        for ngram_sz in range(ngram_range[0], ngram_range[1] + 1):
+            for i in range(len(data) - ngram_sz + 1):
+                ngrams.add(data[i: i + ngram_sz + 1])
+
+        self._ngrams = list(ngrams)
+        self._reverse_ngrams = {w: i for i, w in
+                                enumerate(self._ngrams)}
+
+    def enumerate_ngram(self, ngrams):
+        return [self._reverse_ngrams[t] for t in ngrams]
+
+    def decode_ngram(self, indexes):
+        return [self._ngrams[i] for i in indexes]
+
+    def _one_hot_encode1(self, word):
+        ngrams = []
+        for ngram_sz in range(self._ngram_range[0], self._ngram_range[1] + 1):
+            for i in range(len(word) - ngram_sz + 1):
+                ngrams.append(word[i: i + ngram_sz + 1])
+
+        cnts = Counter(ngrams)
+        return np.array([cnts[i] for i in self._ngrams])
+
+    def one_hot_encode(self, words):
+        return np.array([self._one_hot_encode1(w) for w in words])
 
 
 class NGRAMVectorizer(object):
