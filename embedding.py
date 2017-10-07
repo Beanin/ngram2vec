@@ -168,6 +168,10 @@ class NGRAMDictionary(object):
     def one_hot_encode(self, words):
         return np.array([self._one_hot_encode1(w) for w in words])
 
+    def enumerate_word(self, words):
+        return np.array([self._reverse_vocabulary.get(w, UNK) for
+                         w in words])
+
 
 class NGRAMVectorizer(object):
     def __init__(self, N=2, dim=64, batch_size=64, window_size=1,
